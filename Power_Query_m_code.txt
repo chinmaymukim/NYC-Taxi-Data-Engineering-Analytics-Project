@@ -1,0 +1,19 @@
+let
+  Source = Fabric.Warehouse(null),
+  Navigation = Source{[workspaceId = "58c4658f-086a-43cf-b167-2d84df17caaa"]}[Data],
+  #"Navigation 1" = Navigation{[warehouseId = "4b9cb334-78a5-4152-a070-13078f3e22e0"]}[Data],
+  #"Navigation 2" = #"Navigation 1"{[Schema = "stg", Item = "nyctaxi_yellow"]}[Data],
+  #"Removed columns" = Table.RemoveColumns(#"Navigation 2", {"RatecodeID", "store_and_fwd_flag", "improvement_surcharge", "tolls_amount", "tip_amount", "mta_tax", "extra", "fare_amount", "congestion_surcharge", "Airport_fee"}),
+  #"Inserted conditional column" = Table.AddColumn(#"Removed columns", "Custom", each if [VendorID] = 1 then "Creative Mobile Technologies" else if [VendorID] = 2 then "Verifone" else "Unknown"),
+  #"Reordered columns" = Table.ReorderColumns(#"Inserted conditional column", {"VendorID", "Custom", "tpep_pickup_datetime", "tpep_dropoff_datetime", "passenger_count", "trip_distance", "PULocationID", "DOLocationID", "payment_type", "total_amount", "cbd_congestion_fee"}),
+  #"Removed columns 1" = Table.RemoveColumns(#"Reordered columns", {"VendorID"}),
+  #"Renamed columns" = Table.RenameColumns(#"Removed columns 1", {{"Custom", "Vendor"}}),
+  #"Removed columns 2" = Table.RemoveColumns(#"Renamed columns", {"cbd_congestion_fee"}),
+  #"Inserted conditional column 1" = Table.AddColumn(#"Removed columns 2", "Payment_Method", each if [payment_type] = 1 then "Credit Card" else if [payment_type] = 2 then "Cash" else if [payment_type] = 3 then "No change" else if [payment_type] = 4 then "Dispute" else if [payment_type] = 5 then "Unknown" else if [payment_type] = 6 then "Voided Trip" else "Unknown "),
+  #"Removed columns 3" = Table.RemoveColumns(#"Inserted conditional column 1", {"payment_type"}),
+  #"Renamed columns 1" = Table.RenameColumns(#"Removed columns 3", {{"PULocationID", "pu_location_id"}, {"DOLocationID", "do_location_id"}}),
+  #"Calculated date" = Table.TransformColumns(#"Renamed columns 1", {{"tpep_pickup_datetime", each DateTime.Date(_), type nullable date}, {"tpep_dropoff_datetime", each DateTime.Date(_), type nullable date}}),
+  #"Changed column type" = Table.TransformColumnTypes(#"Calculated date", {{"Vendor", type text}, {"Payment_Method", type text}}),
+  #"Renamed columns 2" = Table.RenameColumns(#"Changed column type", {{"Vendor", "vendor"}, {"Payment_Method", "payment_method"}})
+in
+  #"Renamed columns 2"
